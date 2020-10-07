@@ -232,12 +232,12 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
         if label_image_list[0] is not None:
             for patient, values_d in dataset_d.items():
                 summary_data.write(patient)
-                for i in range(1, 5):
+                for i in range(1, args.classes):
                     summary_data.write(",{}".format(values_d[i]))
                 summary_data.write("\n")
             overall_acc, per_class_acc, per_class_iou, mIOU = iouEvalVal.getMetricRight()
             overall_accuracy_output = os.path.join(args.savedir, "overall_accuracy.txt")
-            with open(overall_accuracy_output, "w") as overall_accuracy_output_file
+            with open(overall_accuracy_output, "w") as overall_accuracy_output_file:
                 overall_accuracy_output_file.write("overall_acc:{}, per_class_acc:{}, per_class_iou:{}, mIOU:{}".format(overall_acc, per_class_acc, per_class_iou, mIOU))
 
 
