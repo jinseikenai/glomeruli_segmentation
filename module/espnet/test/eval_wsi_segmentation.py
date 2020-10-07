@@ -54,6 +54,10 @@ def relabel(img):
     img[img == 7] = 0
     return img
 
+def relabel_4cls(img):
+    img[img == 4] = 1
+    return img
+
 
 class Generate_Segmentation_Gt(AnnotationHandler):
     """Evaluation and Visualization"""
@@ -291,6 +295,8 @@ class Generate_Segmentation_Gt(AnnotationHandler):
                     img = shape.shapes_to_label(img.shape, data['shapes'], label_name_to_value, label_name_list)
                 else:
                     img = relabel(img)
+                if self.nclasses == 4:
+                    img = relabel_4cls(img)
                 # extract coordinate of the union of window and ground truth
                 whole_area_xmin = min([xmin, gt_margin_l[0]])
                 whole_area_ymin = min([ymin, gt_margin_l[1]])
