@@ -262,6 +262,7 @@ This program outputs files below in "savedir".
     +-- summary_accuracy.csv: IoU of each category and mIoU are shown. This is generated if you set label_data_dir. Columns are "filename,glomerulus, crescent, sclerosis, mesangium, background iou,glomerulus iou,crescent iou,sclerosis iou, mesangium iou,mIoU"
     +-- summary_dataset.csv: summary of the ground truth. Number of glomeruli including each class is summarized. This is generated if you set label_data_dir. Columns are "patient_id, glomerulus, crescent, sclerosis, mesangium".
     +-- summary_pixel.csv: pixel summary of the predicted labels. Columns are "patient_id, filename, background, glomerulus, crescent, sclerosis, mesangium"
+    +-- overall_accuracy.txt: output "overall_acc:{}, per_class_acc:{}, per_class_iou:{}, mIOU:{}". List is [background, glomerulus, crescent, sclerosis, mesangium].
 ```
 
 ### 3. Merge glomerular segmenation over WSIs and evaluate

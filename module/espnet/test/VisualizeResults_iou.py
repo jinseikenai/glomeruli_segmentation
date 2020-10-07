@@ -236,7 +236,9 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                     summary_data.write(",{}".format(values_d[i]))
                 summary_data.write("\n")
             overall_acc, per_class_acc, per_class_iou, mIOU = iouEvalVal.getMetricRight()
-            print("overall_acc:{}, per_class_acc:{}, per_class_iou:{}, mIOU:{}".format(overall_acc, per_class_acc, per_class_iou, mIOU))
+            overall_accuracy_output = os.path.join(args.savedir, "overall_accuracy.txt")
+            with open(overall_accuracy_output, "w") as overall_accuracy_output_file
+                overall_accuracy_output_file.write("overall_acc:{}, per_class_acc:{}, per_class_iou:{}, mIOU:{}".format(overall_acc, per_class_acc, per_class_iou, mIOU))
 
 
 def main(args):
