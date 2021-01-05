@@ -135,19 +135,20 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
             output_dir = os.path.join(args.savedir, patient_id)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
+                os.makedirs(os.path.join(output_dir, 'img'))
+                os.makedirs(os.path.join(output_dir, 'json'))
 
             if args.colored:
                 classMap_numpy_color = np.zeros((img_orig.shape[0], img_orig.shape[1], img_orig.shape[2]), dtype=np.uint8)
                 for idx in range(len(pallete)):
                     [r, g, b] = pallete[idx]
                     classMap_numpy_color[classMap_numpy == idx] = [b, g, r]
-                name_c = name_rsplit[0] + "_c" + ".png"
+                name_org = name_rsplit[0] + ".png"
+                cv2.imwrite(output_dir + os.sep + 'img' + os.sep + name_org, img_orig)
                 if args.overlay:
                     overlayed = cv2.addWeighted(img_orig, 0.4, classMap_numpy_color, 0.6, 0)
                     name_over = name_rsplit[0] + "_overlay" + ".jpg"
-                    cv2.imwrite(args.savedir + os.sep + patient_id + os.sep + name_over, overlayed)
-                    name_org = name_rsplit[0] + "_org" + ".png"
-                    cv2.imwrite(args.savedir + os.sep + patient_id + os.sep + name_org, img_orig)
+                    cv2.imwrite(output_dir + os.sep + 'img' + os.sep + name_over, overlayed)
             background_px = np.count_nonzero(classMap_numpy==0)
             glomeruli_px = np.count_nonzero(classMap_numpy==1)
             crescent_px = np.count_nonzero(classMap_numpy==2)
@@ -155,10 +156,12 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
             mesangium_px = np.count_nonzero(classMap_numpy==4)
             summary_pixel.write("{},{},{},{},{},{},{}\n".format(patient_id, name.replace(args.img_extn, 'png'), background_px, glomeruli_px, crescent_px, sclerosis_px, mesangium_px))
 
+            # セグメンテーション結果の境界線を抽出する
+            boundary_lines = bound2line(classMap_numpy, max_classes=4)
+
             if args.cityFormat:
                 classMap_numpy = relabel(classMap_numpy.astype(np.uint8))
             # save json file
-            boundary_lines = bound2line(classMap_numpy, max_classes=4)
             output_d = {}
             output_d["shapes"] = []
             for idx, label in label_idx.items():
@@ -172,12 +175,13 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                         }
                         output_d["shapes"].append(b_obj)
             output_d["lineColor"] = [0, 0, 0, 255]
-            output_d["imagePath"] = name
+            name_org = name_rsplit[0] + ".png"
+            output_d["imagePath"] = '../img/' + name_org
             output_d["flags"] = {}
             output_d["fillColor"] = [0, 0, 0, 255]
             # output_d["imageData"] = utils.img_arr_to_b64(classMap_numpy).decode('utf-8')
             output_d["imageData"] = utils.img_arr_to_b64(img_orig).decode('utf-8')
-            output_json_file = os.path.join(output_dir, name.replace(args.img_extn, 'json'))
+            output_json_file = os.path.join(output_dir, 'json', name.replace(args.img_extn, 'json'))
             with open(output_json_file,'w') as out_json:
                 json.dump(output_d, out_json, indent=4)
             # save org img
