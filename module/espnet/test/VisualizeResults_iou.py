@@ -93,7 +93,8 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
     save_summary_data = os.path.join(args.savedir, "summary_dataset.csv")
     save_summary_pixel = os.path.join(args.savedir, "summary_pixel.csv")
     dataset_d = defaultdict(lambda :defaultdict(int))
-    with open(save_summary_acc, "w") as summary_acc, open(save_summary_data, "w") as summary_data, open(save_summary_pixel, "w") as summary_pixel:
+    with open(save_summary_acc, "w") as summary_acc, open(save_summary_data, "w") as summary_data, \
+        open(save_summary_pixel, "w") as summary_pixel:
         summary_acc.write("filename,glomerulus, crescent, sclerosis, mesangium, background iou,glomerulus iou,crescent iou,sclerosis iou, mesangium iou,mIoU\n")
         summary_data.write("patient_id, glomerulus, crescent, sclerosis, mesangium\n")
         summary_pixel.write("patient_id, filename, background, glomerulus, crescent, sclerosis, mesangium\n")
@@ -126,7 +127,8 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                 img_out = up(img_out)
 
             classMap_numpy = img_out[0].max(0)[1].byte().cpu().data.numpy()
-            classMap_numpy = cv2.resize(classMap_numpy,(img_orig.shape[1], img_orig.shape[0]),interpolation=cv2.INTER_NEAREST)
+            classMap_numpy = cv2.resize(classMap_numpy,(img_orig.shape[1], img_orig.shape[0]),
+                                        interpolation=cv2.INTER_NEAREST)
             if i % 100 == 0:
                 print(i)
 
@@ -137,6 +139,9 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                 os.makedirs(output_dir)
                 os.makedirs(os.path.join(output_dir, 'img'))
                 os.makedirs(os.path.join(output_dir, 'json'))
+            if args.overlay:
+                if not os.path.exists(os.path.join(output_dir, 'seg')):
+                    os.makedirs(os.path.join(output_dir, 'seg'))
 
             if args.colored:
                 classMap_numpy_color = np.zeros((img_orig.shape[0], img_orig.shape[1], img_orig.shape[2]), dtype=np.uint8)
@@ -148,13 +153,15 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                 if args.overlay:
                     overlayed = cv2.addWeighted(img_orig, 0.4, classMap_numpy_color, 0.6, 0)
                     name_over = name_rsplit[0] + "_overlay" + ".jpg"
-                    cv2.imwrite(output_dir + os.sep + 'img' + os.sep + name_over, overlayed)
+                    cv2.imwrite(output_dir + os.sep + 'seg' + os.sep + name_over, overlayed)
             background_px = np.count_nonzero(classMap_numpy==0)
             glomeruli_px = np.count_nonzero(classMap_numpy==1)
             crescent_px = np.count_nonzero(classMap_numpy==2)
             sclerosis_px = np.count_nonzero(classMap_numpy==3)
             mesangium_px = np.count_nonzero(classMap_numpy==4)
-            summary_pixel.write("{},{},{},{},{},{},{}\n".format(patient_id, name.replace(args.img_extn, 'png'), background_px, glomeruli_px, crescent_px, sclerosis_px, mesangium_px))
+            summary_pixel.write("{},{},{},{},{},{},{}\n".format(patient_id, name.replace(args.img_extn, 'png'),
+                                                                background_px, glomeruli_px, crescent_px, sclerosis_px,
+                                                                mesangium_px))
 
             # セグメンテーション結果の境界線を抽出する
             boundary_lines = bound2line(classMap_numpy, max_classes=4)
@@ -185,7 +192,7 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
             with open(output_json_file,'w') as out_json:
                 json.dump(output_d, out_json, indent=4)
             # save org img
-            output_png_file = os.path.join(output_dir, name.replace(args.img_extn, 'png'))
+            # output_png_file = os.path.join(output_dir, name.replace(args.img_extn, 'png'))
             # evaluate and generate combined images including original, prediction, ground-truth
             # compute the confusion matrix
             print("labelName: {}".format(labelName))
@@ -215,7 +222,13 @@ def evaluateModel(args, model, up, rgb_image_list, label_image_list, device):
                 crescent = 1 if np.count_nonzero(unique_values==2) else 0
                 sclerosis = 1 if np.count_nonzero(unique_values==3) else 0
                 mesangium = 1 if np.count_nonzero(unique_values==4) else 0
-                summary_acc.write("{}/{},{},{},{},{},{},{},{},{},{},{}\n".format(patient_id, name.replace(args.img_extn, 'png'),glomeruli, crescent, sclerosis, mesangium, per_class_iou[0],per_class_iou[1],per_class_iou[2], per_class_iou[3], per_class_iou[4], mIoU_each))
+                summary_acc.write("{}/{},{},{},{},{},{},{},{},{},{},{}\n".format(patient_id,
+                                                                                 name.replace(args.img_extn, 'png'),
+                                                                                 glomeruli, crescent, sclerosis,
+                                                                                 mesangium, per_class_iou[0],
+                                                                                 per_class_iou[1], per_class_iou[2],
+                                                                                 per_class_iou[3], per_class_iou[4],
+                                                                                 mIoU_each))
                 # generate combined image including original, prediction, ground-truth
                 org_height = img_orig.shape[0]
                 org_width = img_orig.shape[1]
