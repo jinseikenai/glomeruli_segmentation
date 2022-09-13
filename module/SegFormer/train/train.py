@@ -1,3 +1,6 @@
+# Copyright 2022 The University of Tokyo Hospital. All Rights Reserved.
+# <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />This program is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
 from transformers import SegformerModel, SegformerConfig
 from transformers import SegformerFeatureExtractor, SegformerModel
 from transformers import SegformerForSemanticSegmentation
@@ -47,8 +50,8 @@ def compute_metrics(eval_pred):
         ).argmax(dim=1)
 
         # note that the metric expects predictions + labels as numpy arrays
-        # compute の I/Fでは tensor を受け付けることが出来るが内部的に numpy に変換される。
-        # labels は numpy arrays になっている
+        # compute' I/F can accept tensor data, but it is internally converted to numpy.
+        # labels are handled by numpy arrays in this program.
         pred_labels = logits_tensor.detach().cpu().numpy()
         metrics = metric.compute(predictions=pred_labels, references=labels,
                                  num_labels=args.num_labels,
@@ -126,14 +129,14 @@ if __name__ == '__main__':
                         default=1)
     parser.add_argument('--site', help="set training target site", type=str,
                         choices=["01_Todai", "02_Kitano"], required=True)
+    parser.add_argument('--data_root', help="set training data root path", type=str,
+                        required=True)
     parser.add_argument('--data_date', help="set training data date", type=str,
-                        required=True)
-    parser.add_argument('--data_root', help="set training data root dir", type=str,
-                        required=True)
-    parser.add_argument('--model_root', help="set dir for output models", type=str,
                         required=True)
     parser.add_argument('--output_dir', help="set sub path to output dir", type=str,
                         default="20220720")
+    parser.add_argument('--model_root', help="set pretrained model root path", type=str,
+                        required=True)
     parser.add_argument('--pretrained_model', help="set pretrained model", type=str,
                         default="nvidia/mit-b0")
     parser.add_argument('--lr', help="set max lr", type=float,
@@ -146,21 +149,11 @@ if __name__ == '__main__':
                         default="")
     args = parser.parse_args()
 
-    # datasource = model_root + 'ADE20k_dataset/ADE20K_2016_07_26'
-    # datasource = model_root + 'ADE20k_toy_dataset'
-    data_source = os.path.join(data_root, args.site, args.data_date)
-    # pretrained = model_root + 'pretrained/segformer.b1.512x512.ade.160k.pth'
+    data_source = os.path.join(args.data_root, args.site, args.data_date)
 
     configuration = SegformerConfig()
     model = SegformerModel(configuration)
     configuration = model.config
-
-    # dataset = load_dataset("huggingface/cats-image")
-    # dataset = load_dataset(datasource)
-    # image = dataset["train"][0]['image']
-
-    # feature_extractor = SegformerFeatureExtractor.from_pretrained("nvidia/mit-b0")
-    # feature_extractor = SegformerFeatureExtractor(reduce_labels=True)
 
     feature_extractor = SegformerFeatureExtractor(reduce_labels=False)
 
@@ -222,23 +215,23 @@ if __name__ == '__main__':
     #                                                          label2id=label2id)
     epoch_steps = math.ceil(len(train_ds) / args.batch_size)
     training_args = TrainingArguments(
-        output_dir=os.path.join(model_root, args.site, f'{args.output_dir}/fold{args.fold}'),
+        output_dir=os.path.join(args.model_root, args.site, f'{args.output_dir}/fold{args.fold}'),
         learning_rate=args.lr,
         num_train_epochs=args.max_epoch,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size * 2,
-        # best と last の 2つのモデルを保存する
+        # save the best and latest models.
         save_total_limit=2,
         evaluation_strategy="steps",  # "no", "epoch", "steps"
         save_strategy="steps",  # "no", "epoch", "steps"
-        # save_interval epoch 毎に 評価を行う。最初の保存 epoch は warmup に使う
+        # The first epoch is used for warmup.
         warmup_steps=epoch_steps*args.save_interval,
         save_steps=epoch_steps*args.save_interval,
         eval_steps=epoch_steps*args.save_interval,
         logging_steps=epoch_steps,
         gradient_accumulation_steps=args.accumulation_steps,
         eval_accumulation_steps=1,
-        # best model 判定を mean_iou で行う。mean_iou を用いる場合は greater_is_better=Trueを設定する必要がある。
+        # The decision of the best is made using mean_iou. It is necessary to set the grater_is_better to True.
         metric_for_best_model="mean_iou",
         greater_is_better=True,
         load_best_model_at_end=True,
@@ -265,8 +258,8 @@ if __name__ == '__main__':
     )
     model.train()
 
-    # file logger の準備
-    log_file_dir = os.path.join(model_root, args.site, f'{args.output_dir}/fold{args.fold}')
+    # Preparing to use the file logger.
+    log_file_dir = os.path.join(args.model_root, args.site, f'{args.output_dir}/fold{args.fold}')
     if not os.path.isdir(log_file_dir):
         os.makedirs(log_file_dir)
     logging.basicConfig(
@@ -294,7 +287,5 @@ if __name__ == '__main__':
         trainer.train()
     else:
         trainer.train(args.checkpoint)
-
-    # model.save_pretrained(os.path.join(model_root, f'trained_model_fold{args.fold}'))
 
     print('end of process.')

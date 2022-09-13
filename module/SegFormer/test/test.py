@@ -1,3 +1,6 @@
+# Copyright 2022 The University of Tokyo Hospital. All Rights Reserved.
+# <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />This program is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
 from transformers import SegformerFeatureExtractor, SegformerForSemanticSegmentation
 from SegFormer.common.ResizedGlomerularDataset import ResizedGlomerularDataset
 import os
@@ -19,7 +22,7 @@ font = ImageFont.truetype(font="NotoSansCJK-Bold.ttc", size=62)
 
 
 def glomerular_palette():
-    # overlay させるために色を少し強調しておく
+    # slightly enhance colors to preserve tones after overlay.
     return [[0, 0, 0], [120, 120, 120], [250, 47, 0],  [0, 220, 58], [43, 90, 250], [255, 255, 100]]
     # return [[0, 0, 0], [120, 120, 120], [213, 47, 0],  [0, 180, 58], [43, 90, 233], [255, 255, 128]]
     # return [[0, 0, 0], [120, 120, 120], [180, 120, 120], [6, 230, 230], [255, 255, 128]]
@@ -38,8 +41,8 @@ def compute_metrics(eval_pred):
         ).argmax(dim=1)
 
         # note that the metric expects predictions + labels as numpy arrays
-        # labels は numpy arrays になっている
-        # compute の I/Fでは tensor を受け付けることが出来るが内部的に numpy に変換される。
+        # compute' I/F can accept tensor data, but it is internally converted to numpy.
+        # labels are handled by numpy arrays in this program.
         pred_labels = logits_tensor.detach().cpu().numpy()
         '''
         metrics = metric.compute(predictions=pred_labels, references=labels,
@@ -56,8 +59,8 @@ def compute_metrics(eval_pred):
         label_pixel = {k: 0 for k in range(args.num_labels)}
         pred_label = pred_labels.squeeze()
         for k, pp in pred_pixel.items():
-            # pred_pixel を tensor のままにした場合は item() で値を取り出す必要がある。
-            # metric.compute の内部では numpy を使うので最初から numpy に変換しておく
+            # If you leave pred_pixel as tensor, you need to extract the value with item().
+            # inside metric.compute uses as numpy, so we convert it to numpy.
             pred_pixel[k] = (pred_label == k).sum()
             label_pixel[k] = (labels == k).sum()
         # ignore_index=0,
@@ -77,12 +80,12 @@ def collate_fn(batch):
     images = [x[0] for x in batch_list]
     labels = [x[1] for x in batch_list]
     images = torch.stack(images)
-    # labels の大きさはそれぞれ異なるので torch.stack 出来ない
+    # The size of each label images are different, so torch.stack cannot be used.
     # targets = torch.stack(targets)
     return images, labels
 
 
-# ここでは簡易的に mpp を 0.228 に固定している
+# Here mapp is fixed at 0.228 for simplicity.
 slide_info_mppx = 0.228
 scale_bar_length = round(100.0 / slide_info_mppx)
 
@@ -129,7 +132,7 @@ def save_image(pred_seg: np.array, gt_seg: np.array):
     concat_img = Image.new(mode='RGBA', size=(org_img.width + seg_img.width + gt_img.width, org_img.height))
     ''''''
     # if scale_bar:
-    # 100μm のスケールバーを挿入する
+    # insert a 100 μm scale bar.
     width, height = org_img.size
     draw = ImageDraw.Draw(org_img)
     draw.line((30, height-30, scale_bar_length+30, height-30), fill='black', width=16)
@@ -182,6 +185,8 @@ if __name__ == '__main__':
                         choices=["01_Todai", "02_Kitano"], required=True)
     parser.add_argument('--data_date', help="set training data date", type=str,
                         required=True)
+    parser.add_argument('--model_base_path', help="set base_path for pretrained model", type=str,
+                        required=True)
     parser.add_argument('--pretrained_model', help="set pretrained model", type=str,
                         default="segformer/20220804_b4")
     parser.add_argument('--checkpoint', help="set continue checkpoint", type=str,
@@ -192,8 +197,6 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--data_root', help="set data_root", type=str,
                         required=True)
-    parser.add_argument('--model_base_path', help="set model base path", type=str,
-                        required=True)
     parser.add_argument('--detected_mode', help="set 1 for segmentation to detected regions", type=int,
                         default=0)
     args = parser.parse_args()
@@ -201,7 +204,7 @@ if __name__ == '__main__':
     # feature_extractor = SegformerFeatureExtractor.from_pretrained('nvidia/segformer-b0-finetuned-ade-512-512')
     feature_extractor = SegformerFeatureExtractor(reduce_labels=False)
     if args.checkpoint == '':
-        # checkpoint が指定されていない場合は最良のチェックポイントの番号を探す。
+        # find the best checkpoint number, if args.checkpoint is not specified.
         model_base_path = os.path.join(args.model_base_path, f'{args.model_site}/{args.pretrained_model}/fold{args.fold}')
         checkpoint = search_best_checkpoint(model_base_path)
     else:
@@ -210,7 +213,7 @@ if __name__ == '__main__':
     model = SegformerForSemanticSegmentation.from_pretrained(model_path)
 
     data_source = os.path.join(args.data_root, args.target_site, args.data_date)
-    # test の場合も ToTensor() だけは必要
+    # ToTensor is required even in test
     testDatasetTransforms = myTransforms.Compose([
         myTransforms.ToTensor(),
     ])
@@ -229,9 +232,9 @@ if __name__ == '__main__':
 
     # metric = load_metric("mean_iou")
     metric = my_mean_iou
-    # ここまでデータ準備
+    # Data preparation ends here
 
-    # ここからレポートファイル準備
+    # Report file preparation from here
     report_root_path = os.path.join(args.report_root_path, args.target_site, args.model_site, args.data_date,
                                     args.pretrained_model, f'fold{args.fold}')
     if not os.path.isdir(report_root_path):
@@ -252,13 +255,13 @@ if __name__ == '__main__':
             outputs = model(images)
             # shape (batch_size, num_labels, height/4, width/4)
             logits = outputs.logits
-            # test 時は gt_seg のイメージサイズがバラバラなので一つずつ評価する
+            # When running test, evaluate gt_seg one by one since the image size is different for each one.
             for pred, gt in zip(logits, gt_seg):
                 image_file_name = image_file_list[idx]
                 split_image_file_name = image_file_name.split('/')
                 specimen_id = split_image_file_name[-2]
                 file_name = split_image_file_name[-1]
-                # compute_metrics はバッチ前提なので pred と gt ともにバッチ軸を追加する
+                # To use compute_metrics, both pred and gt need to add batch axes.
                 pred = pred.unsqueeze(dim=0)
                 metrics, label_pixel, pred_pixel = compute_metrics((pred, gt[np.newaxis, :, :]))
                 for key, value in metrics.items():

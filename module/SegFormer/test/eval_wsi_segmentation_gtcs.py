@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2020 The University of Tokyo Hospital. All Rights Reserved.
+# Copyright 2022 The University of Tokyo Hospital. All Rights Reserved.
 # <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />This program is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
 
 from module.common.annotation_handler import AnnotationHandler
@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ElementTree
 
 MAGNIFICATION = 8
 # PALETTE = [[0, 0, 0], [120, 120, 120], [213, 47, 0],  [0, 180, 58], [43, 90, 233], [255, 255, 128]]
-# overlay させるために色を少し強調しておく
+# slightly enhance colors to preserve tones after overlay.
 PALETTE = [[0, 0, 0], [120, 120, 120], [250, 47, 0],  [0, 220, 58], [43, 90, 250], [255, 255, 100]]
 
 
@@ -402,7 +402,7 @@ class Generate_Segmentation_Gt(AnnotationHandler):
                         # make ground truth
                         seg_gt_l = glob.glob(os.path.join(self.seg_gt_image_dir, file_key, "*.PNG"))
                         self.gt_list = []
-                        # GTファイルの座標は1/8スケールで記録されている
+                        # Coordinates of GT are recorded in 1/8 scale
                         self.read_gt_list(seg_gt_l, times=8)
                         gt_np = self.overlay(self.gt_list, 8, margin_x, margin_y, seg_gt_l, xmin, ymin, xmax, ymax, "gt")
                         # make prediction result
@@ -456,7 +456,7 @@ def parse_args():
     parser.add_argument('--output_file', dest='output_file', help="Set output file name. If you do not set, output a file to ./output/seg_data_pred/seg_data_output.tsv.", type=str, default='./output/seg_data_pred/seg_data_output.tsv')
     parser.add_argument('--output_dir', dest='output_dir', help="Set path to the output directory for merged images. If you do not set, output a file to ./output/seg_data_pred/", type=str, default='./output/seg_data_pred')
     parser.add_argument('--start', dest='start', help="Set --start for start line begin 0", type=int, default=0)
-    parser.add_argument('--end', dest='end', help="Set --end for end line(含まれない）", type=int, default=0)
+    parser.add_argument('--end', dest='end', help="Set --end for end line(not included）", type=int, default=0)
     parser.add_argument('--window_size', dest='window_size', help="Set window size", type=int, default=2400)
     parser.add_argument('--segmentation_gt_png_dir', dest='gt_png_dir', help="Set path to parent directory of the label images. If you do not have the ground truth, no need to set this argument.", type=str, default=None)
     parser.add_argument('--no_save', dest='no_save', help="Set --no_save for test", action='store_true')
